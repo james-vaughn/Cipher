@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"log"
 	"time"
@@ -16,7 +17,7 @@ const (
 	//needed to snoop on the interface
 	PROMISCUOUS_MODE 	= true
 	//time period packets are collected before pushing the results to the Packets channel
-	COLLECTION_INTERVAL = 10 * time.Second
+	COLLECTION_INTERVAL = -1 * time.Second
 )
 
 var (
@@ -50,7 +51,10 @@ func capturePackets(handle *pcap.Handle) error {
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range packetSource.Packets() {
 		// Process packet here
-		fmt.Println(packet)
+		dnsLayer := packet.Layer(layers.LayerTypeDNS)
+		if dnsLayer != nil {
+			fmt.Println(packet)
+		}
 	}
 
 	return nil
