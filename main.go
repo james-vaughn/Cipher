@@ -7,18 +7,18 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
+	"github.com/james-vaughn/gilgamesh/packetHandlers"
 	"log"
 )
 
 const (
 	//Amount of packet collected; long enough for headers
-	SNAPSHOT_LEN        = 4096
+	SNAPSHOT_LEN = 4096
 )
 
 var (
 	INTERFACE_NAME string
 )
-
 
 func init() {
 	parseFlags()
@@ -65,18 +65,8 @@ func capturePackets(handle *pcap.Handle) {
 		for _, layerType := range decodedLayers {
 			switch layerType {
 			case layers.LayerTypeDNS:
-				handleDnsPacket(dns)
+				packetHandlers.HandleDnsPacket(dns)
 			}
 		}
-	}
-}
-
-func handleDnsPacket(dnsPacket layers.DNS) {
-	for _, question := range dnsPacket.Questions {
-		log.Printf("Question: %s\n", string(question.Name))
-	}
-
-	for _, answer := range dnsPacket.Answers {
-		log.Printf("Answer: %s\n", string(answer.IP.String()))
 	}
 }
