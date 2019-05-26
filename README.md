@@ -7,8 +7,8 @@ To configure this app, add the following config under appsettings.config
 
 ```
 {
+   "interface" : "eth0",
    "dns" : {
-     "interface" : "eth0",
      "cutoffDuration" : 5, //minutes
      "triggerThreshold" : 500, //packet count
      "durationBetweenTriggers" : 1 //minutes
