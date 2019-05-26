@@ -3,9 +3,10 @@
 package main
 
 import (
-	"flag"
+	"encoding/json"
+	"io/ioutil"
 	"log"
-	"time"
+	"os"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -13,23 +14,28 @@ import (
 	"github.com/james-vaughn/cipher/packetHandlers"
 )
 
+type AppConfiguration struct {
+	Interface string                                       `json:"interface"`
+	DnsConfig packetHandlers.DnsPacketHandlerConfiguration `json:"dns"`
+}
+
 const (
 	//Amount of packet collected; long enough for headers
-	SNAPSHOT_LEN = 4096
+	SNAPSHOT_LEN    = 4096
+	CONFIG_LOCATION = "appsettings.config"
 )
 
 var (
-	INTERFACE_NAME        string
-	DNS_CUTOFF_DURATION   time.Duration
-	DNS_TRIGGER_THRESHOLD int
+	AppConfig AppConfiguration
 )
 
 func init() {
-	parseFlags()
+	parseConfig()
 }
 
 func main() {
-	handle, err := pcap.OpenLive(INTERFACE_NAME, SNAPSHOT_LEN, true, pcap.BlockForever)
+	log.Printf("Openning %s for capturing...\n", AppConfig.Interface)
+	handle, err := pcap.OpenLive(AppConfig.Interface, SNAPSHOT_LEN, true, pcap.BlockForever)
 	if err != nil {
 		log.Fatalf("Couldn't open device for capture: %v", err)
 	}
@@ -39,14 +45,16 @@ func main() {
 	capturePackets(handle)
 }
 
-func parseFlags() {
-	var cutoffDurationMinutes int
-	flag.StringVar(&INTERFACE_NAME, "i", "", "Network interface name from e.g. ifconfig")
-	flag.IntVar(&cutoffDurationMinutes, "d", 5, "Activity window size (in minutes) to check for spikes")
-	flag.IntVar(&DNS_TRIGGER_THRESHOLD, "t", 10, "Threshold to trigger spike handler")
-	flag.Parse()
+func parseConfig() {
+	jsonFile, err := os.Open(CONFIG_LOCATION)
 
-	DNS_CUTOFF_DURATION = time.Duration(-cutoffDurationMinutes) * time.Minute
+	if err != nil {
+		log.Fatalf("Error opening configuration json: %v", err)
+	}
+	defer jsonFile.Close()
+
+	configBytes, _ := ioutil.ReadAll(jsonFile)
+	json.Unmarshal(configBytes, &AppConfig)
 }
 
 func capturePackets(handle *pcap.Handle) {
@@ -58,11 +66,6 @@ func capturePackets(handle *pcap.Handle) {
 	var udp layers.UDP
 	var dns layers.DNS
 	var payload gopacket.Payload
-
-	dnsHandlerConfig := packetHandlers.DnsPacketHandlerConfiguration{
-		CutoffDuration:   DNS_CUTOFF_DURATION,
-		TriggerThreshold: DNS_TRIGGER_THRESHOLD,
-	}
 
 	parser := gopacket.NewDecodingLayerParser(layers.LayerTypeEthernet, &eth, &ip4, &ip6, &tcp, &udp, &dns, &payload)
 	decodedLayers := make([]gopacket.LayerType, 0, 10)
@@ -80,7 +83,7 @@ func capturePackets(handle *pcap.Handle) {
 		for _, layerType := range decodedLayers {
 			switch layerType {
 			case layers.LayerTypeDNS:
-				packetHandlers.HandleDnsPacket(dns, dnsHandlerConfig)
+				packetHandlers.HandleDnsPacket(dns, AppConfig.DnsConfig)
 			}
 		}
 	}

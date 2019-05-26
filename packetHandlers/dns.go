@@ -3,7 +3,6 @@ package packetHandlers
 import (
 	"fmt"
 	"log"
-	"sort"
 	"strings"
 	"time"
 
@@ -11,8 +10,9 @@ import (
 )
 
 type DnsPacketHandlerConfiguration struct {
-	CutoffDuration   time.Duration
-	TriggerThreshold int
+	CutoffDuration          time.Duration `json:"cutoffDuration"`
+	TriggerThreshold        int           `json:"triggerThreshold"`
+	DurationBetweenTriggers time.Duration `json:"durationBetweenTriggers"`
 }
 
 type dnsInfo struct {
@@ -23,12 +23,17 @@ type dnsInfo struct {
 
 var (
 	dnsPacketInfo []dnsInfo
+	lastTrigger   time.Time
 )
 
 func HandleDnsPacket(dnsPacket layers.DNS, config DnsPacketHandlerConfiguration) {
 	removeOldEntries(config.CutoffDuration)
 	addNewEntry(dnsPacket)
-	triggerIfThresholdIsMet(config.TriggerThreshold)
+
+	nextTriggerTime := lastTrigger.Add(config.DurationBetweenTriggers)
+	if time.Now().After(nextTriggerTime) {
+		triggerIfThresholdIsMet(config.TriggerThreshold)
+	}
 }
 
 func removeOldEntries(cutoffDuration time.Duration) {
@@ -37,11 +42,11 @@ func removeOldEntries(cutoffDuration time.Duration) {
 	}
 
 	//sort packet info by timestamp
-	//TODO not needed because always sorted by time due to appending to the back?
-	sort.Slice(dnsPacketInfo, func(i, j int) bool {
-		return dnsPacketInfo[i].timestamp.Before(
-			dnsPacketInfo[j].timestamp)
-	})
+	//not needed because always sorted by time due to appending to the back?
+	//sort.Slice(dnsPacketInfo, func(i, j int) bool {
+	//	return dnsPacketInfo[i].timestamp.Before(
+	//		dnsPacketInfo[j].timestamp)
+	//})
 
 	//remove entries older than the cutoff time
 	cutoffTime := time.Now().Add(cutoffDuration)
