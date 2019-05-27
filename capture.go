@@ -11,17 +11,6 @@ import (
 	"github.com/james-vaughn/cipher/packetHandlers"
 )
 
-type AppConfiguration struct {
-	Interface string           `json:"interface"`
-	DnsConfig DnsConfiguration `json:"dns"`
-}
-
-type DnsConfiguration struct {
-	CutoffMinutes          int `json:"cutoffMinutes"`
-	TriggerThreshold       int `json:"triggerThreshold"`
-	MinutesBetweenTriggers int `json:"minutesBetweenTriggers"`
-}
-
 const (
 	//Amount of packet collected; long enough for headers
 	SNAPSHOT_LEN    = 4096
@@ -57,7 +46,7 @@ func capturePackets(handle *pcap.Handle) {
 		data, _, err := handle.ReadPacketData()
 
 		if err != nil {
-			log.Println("Error reading packet data: %w", err)
+			log.Println("Error reading packet data: \n%v", err)
 			continue
 		}
 
@@ -66,7 +55,9 @@ func capturePackets(handle *pcap.Handle) {
 		for _, layerType := range decodedLayers {
 			switch layerType {
 			case layers.LayerTypeDNS:
-				packetHandlers.HandleDnsPacket(dns, DnsConfig)
+				if err := packetHandlers.HandleDnsPacket(dns, DnsConfig); err != nil {
+					log.Println(err)
+				}
 			}
 		}
 	}

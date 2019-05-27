@@ -7,17 +7,18 @@ To configure this app, add the following config under appsettings.config
 
 ```
 {
-   "interface" : "eth0",
-   "dns" : {
-     "cutoffDuration" : 5, //minutes
-     "triggerThreshold" : 500, //packet count
-     "durationBetweenTriggers" : 1 //minutes
-   },
-   "email" : {
-     "username" : "user",
-     "password" : "password",
-     "to"       : "to@gmail.com",
-     "smtpServer" : "smtp.gmail.com:587",
-   }
- }
+  "interface" : "enp4s0",
+  "dns" : {
+    "cutoffMinutes" : 5,
+    "triggerThreshold" : 100,
+    "minutesBetweenTriggers" : 5
+  },
+  "email" : {
+    "to" : "to@gmail.com",
+    "from" : "from@gmail.com",
+    "password" : "pass",
+    "smtpServerHostname" : "smtp.gmail.com",
+    "smtpServerPort" : 587
+  }
+}
  ```

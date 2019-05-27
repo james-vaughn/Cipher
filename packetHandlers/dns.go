@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/james-vaughn/cipher/emailer"
+
 	"github.com/google/gopacket/layers"
 )
 
@@ -14,6 +16,7 @@ type DnsPacketHandlerConfiguration struct {
 	CutoffDuration          time.Duration
 	TriggerThreshold        int
 	DurationBetweenTriggers time.Duration
+	Emailer                 emailer.Emailer
 }
 
 type dnsInfo struct {
@@ -27,14 +30,16 @@ var (
 	lastTrigger   time.Time
 )
 
-func HandleDnsPacket(dnsPacket layers.DNS, config DnsPacketHandlerConfiguration) {
+func HandleDnsPacket(dnsPacket layers.DNS, config DnsPacketHandlerConfiguration) error {
 	removeOldEntries(config.CutoffDuration)
 	addNewEntry(dnsPacket)
 
 	nextTriggerTime := lastTrigger.Add(config.DurationBetweenTriggers)
 	if time.Now().After(nextTriggerTime) {
-		triggerIfThresholdIsMet(config.TriggerThreshold)
+		return triggerIfThresholdIsMet(config.TriggerThreshold, config.Emailer)
 	}
+
+	return nil
 }
 
 func removeOldEntries(cutoffDuration time.Duration) {
@@ -80,10 +85,12 @@ func addNewEntry(dnsPacket layers.DNS) {
 	dnsPacketInfo = append(dnsPacketInfo, dnsInfo)
 }
 
-func triggerIfThresholdIsMet(threshold int) {
+func triggerIfThresholdIsMet(threshold int, emailer emailer.Emailer) error {
 	if len(dnsPacketInfo) < threshold {
-		return
+		return nil
 	}
+
+	lastTrigger = time.Now()
 
 	log.Println("Trigger Hit")
 	for _, info := range dnsPacketInfo {
@@ -91,7 +98,11 @@ func triggerIfThresholdIsMet(threshold int) {
 	}
 	log.Println("----------------------")
 
-	lastTrigger = time.Now()
+	if err := emailer.Send("Trigger", "trigger"); err != nil {
+		return fmt.Errorf("Error sending trigger notification: \n%v", err)
+	}
+
+	return nil
 }
 
 //TODO make better
