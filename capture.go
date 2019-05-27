@@ -3,10 +3,7 @@
 package main
 
 import (
-	"encoding/json"
-	"io/ioutil"
 	"log"
-	"os"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -15,8 +12,14 @@ import (
 )
 
 type AppConfiguration struct {
-	Interface string                                       `json:"interface"`
-	DnsConfig packetHandlers.DnsPacketHandlerConfiguration `json:"dns"`
+	Interface string           `json:"interface"`
+	DnsConfig DnsConfiguration `json:"dns"`
+}
+
+type DnsConfiguration struct {
+	CutoffMinutes          int `json:"cutoffMinutes"`
+	TriggerThreshold       int `json:"triggerThreshold"`
+	MinutesBetweenTriggers int `json:"minutesBetweenTriggers"`
 }
 
 const (
@@ -25,17 +28,9 @@ const (
 	CONFIG_LOCATION = "appsettings.config"
 )
 
-var (
-	AppConfig AppConfiguration
-)
-
-func init() {
-	parseConfig()
-}
-
 func main() {
-	log.Printf("Openning %s for capturing...\n", AppConfig.Interface)
-	handle, err := pcap.OpenLive(AppConfig.Interface, SNAPSHOT_LEN, true, pcap.BlockForever)
+	log.Printf("Opening %s for capturing...\n", Interface)
+	handle, err := pcap.OpenLive(Interface, SNAPSHOT_LEN, true, pcap.BlockForever)
 	if err != nil {
 		log.Fatalf("Couldn't open device for capture: %v", err)
 	}
@@ -43,18 +38,6 @@ func main() {
 	defer handle.Close()
 
 	capturePackets(handle)
-}
-
-func parseConfig() {
-	jsonFile, err := os.Open(CONFIG_LOCATION)
-
-	if err != nil {
-		log.Fatalf("Error opening configuration json: %v", err)
-	}
-	defer jsonFile.Close()
-
-	configBytes, _ := ioutil.ReadAll(jsonFile)
-	json.Unmarshal(configBytes, &AppConfig)
 }
 
 func capturePackets(handle *pcap.Handle) {
@@ -83,7 +66,7 @@ func capturePackets(handle *pcap.Handle) {
 		for _, layerType := range decodedLayers {
 			switch layerType {
 			case layers.LayerTypeDNS:
-				packetHandlers.HandleDnsPacket(dns, AppConfig.DnsConfig)
+				packetHandlers.HandleDnsPacket(dns, DnsConfig)
 			}
 		}
 	}

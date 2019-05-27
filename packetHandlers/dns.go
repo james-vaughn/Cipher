@@ -3,6 +3,7 @@ package packetHandlers
 import (
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
@@ -10,9 +11,9 @@ import (
 )
 
 type DnsPacketHandlerConfiguration struct {
-	CutoffDuration          time.Duration `json:"cutoffDuration"`
-	TriggerThreshold        int           `json:"triggerThreshold"`
-	DurationBetweenTriggers time.Duration `json:"durationBetweenTriggers"`
+	CutoffDuration          time.Duration
+	TriggerThreshold        int
+	DurationBetweenTriggers time.Duration
 }
 
 type dnsInfo struct {
@@ -43,10 +44,10 @@ func removeOldEntries(cutoffDuration time.Duration) {
 
 	//sort packet info by timestamp
 	//not needed because always sorted by time due to appending to the back?
-	//sort.Slice(dnsPacketInfo, func(i, j int) bool {
-	//	return dnsPacketInfo[i].timestamp.Before(
-	//		dnsPacketInfo[j].timestamp)
-	//})
+	sort.Slice(dnsPacketInfo, func(i, j int) bool {
+		return dnsPacketInfo[i].timestamp.Before(
+			dnsPacketInfo[j].timestamp)
+	})
 
 	//remove entries older than the cutoff time
 	cutoffTime := time.Now().Add(cutoffDuration)
@@ -88,8 +89,9 @@ func triggerIfThresholdIsMet(threshold int) {
 	for _, info := range dnsPacketInfo {
 		log.Println(info)
 	}
-
 	log.Println("----------------------")
+
+	lastTrigger = time.Now()
 }
 
 //TODO make better
