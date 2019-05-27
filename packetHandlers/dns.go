@@ -2,7 +2,6 @@ package packetHandlers
 
 import (
 	"fmt"
-	"log"
 	"sort"
 	"strings"
 	"time"
@@ -92,13 +91,8 @@ func triggerIfThresholdIsMet(threshold int, emailer emailer.Emailer) error {
 
 	lastTrigger = time.Now()
 
-	log.Println("Trigger Hit")
-	for _, info := range dnsPacketInfo {
-		log.Println(info)
-	}
-	log.Println("----------------------")
-
-	if err := emailer.Send("Trigger", "trigger"); err != nil {
+	messageBody := fmt.Sprintf("Have received %d packets", len(dnsPacketInfo))
+	if err := emailer.Send("DNS traffic spike", messageBody); err != nil {
 		return fmt.Errorf("Error sending trigger notification: \n%v", err)
 	}
 
